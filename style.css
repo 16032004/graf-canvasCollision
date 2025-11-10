@@ -1,18 +1,40 @@
-body {
+/* Estilos generales */
+* {
   margin: 0;
   padding: 0;
-  background-color: #111;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  color: #fff;
-  font-family: Arial, sans-serif;
+  box-sizing: border-box;
 }
 
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background-color: #111;
+  color: #fff;
+}
+
+/* Título superior */
+h1 {
+  padding: 12px 20px;
+  background-color: #000;
+  font-size: 24px;
+}
+
+/* Canvas estilo mesa de billar */
 canvas {
-  background: #ff8;
-  border: 3px solid #000;
   display: block;
+  margin: 0 auto;
+  background: #006400;          /* verde oscuro */
+  border: 6px solid #003000;    /* borde más oscuro tipo mesa */
+  box-shadow: 0 0 25px #002000 inset;
+}
+
+/* HUD con contador en la esquina superior derecha */
+#hud {
+  position: fixed;
+  top: 10px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 14px;
+  z-index: 10;
 }
