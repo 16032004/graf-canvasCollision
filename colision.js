@@ -1,147 +1,145 @@
+// ===============================
 // Configuración del canvas
+// ===============================
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
+// Algo de margen para dejar lugar al título
 const window_height = window.innerHeight - 100;
 const window_width = window.innerWidth;
+
 canvas.height = window_height;
 canvas.width = window_width;
-canvas.style.background = "#ff8";
 
 // ===============================
-// Clase Circle
+// Clase Chip (ficha/florecita)
 // ===============================
-class Circle {
-  constructor(x, y, radius, color, text, speed) {
-    this.posX = x;
-    this.posY = y;
+class Chip {
+  constructor(x, y, radius, colorCentro, colorBorde, speedY) {
+    this.x = x;
+    this.y = y;
     this.radius = radius;
-
-    this.originalColor = color;
-    this.color = color;
-    this.text = text;
-    this.speed = speed;
-
-    // Dirección aleatoria
-    const angle = Math.random() * Math.PI * 2;
-    this.dx = Math.cos(angle) * this.speed;
-    this.dy = Math.sin(angle) * this.speed;
+    this.colorCentro = colorCentro;
+    this.colorBorde = colorBorde;
+    this.speedY = speedY;
   }
 
   draw(context) {
+    // Dibujamos una especie de ficha/flor: círculo con borde
+    context.save();
     context.beginPath();
-    context.strokeStyle = this.color;
-    context.fillStyle = this.color;
-
-    context.font = "16px Arial";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText(this.text, this.posX, this.posY);
-
-    context.lineWidth = 2;
-    context.arc(this.posX, this.posY, this.radius, 0, Math.PI * 2, false);
+    context.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    context.fillStyle = this.colorCentro;
+    context.fill();
+    context.lineWidth = 4;
+    context.strokeStyle = this.colorBorde;
     context.stroke();
     context.closePath();
+    context.restore();
   }
 
   update() {
-    this.posX += this.dx;
-    this.posY += this.dy;
+    // Movimiento hacia abajo
+    this.y += this.speedY;
 
-    // Rebote en los bordes
-    if (this.posX + this.radius > window_width || this.posX - this.radius < 0) {
-      this.dx = -this.dx;
+    // Si sale por abajo, reaparece arriba con valores nuevos
+    if (this.y - this.radius > canvas.height) {
+      this.respawnTop();
     }
-    if (this.posY + this.radius > window_height || this.posY - this.radius < 0) {
-      this.dy = -this.dy;
-    }
+  }
+
+  respawnTop() {
+    this.y = -this.radius - Math.random() * 50; // un poco arriba del canvas
+    this.x = Math.random() * canvas.width;
+    this.speedY = 1 + Math.random() * 4; // entre 1 y 5
+    // Nuevos colores aleatorios
+    this.colorCentro = randomPastel();
+    this.colorBorde = randomColor();
+  }
+
+  // ¿El punto (mx, my) está dentro de la ficha?
+  isHit(mx, my) {
+    const dx = mx - this.x;
+    const dy = my - this.y;
+    const dist = Math.hypot(dx, dy);
+    return dist <= this.radius;
   }
 }
 
 // ===============================
-// Crear y animar círculos
+// Utilidades para colores
 // ===============================
-let circles = [];
+function randomColor() {
+  return `#${Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, "0")}`;
+}
 
-function generateCircles(n) {
-  for (let i = 0; i < n; i++) {
-    const radius = Math.random() * 30 + 20;
-    const x = Math.random() * (window_width - radius * 2) + radius;
-    const y = Math.random() * (window_height - radius * 2) + radius;
-    const color = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
-    const speed = Math.random() * 4 + 1; // velocidades entre 1 y 5
-    const text = `C${i + 1}`;
-    circles.push(new Circle(x, y, radius, color, text, speed));
+function randomPastel() {
+  // Pastel suave
+  const r = 150 + Math.floor(Math.random() * 100);
+  const g = 150 + Math.floor(Math.random() * 100);
+  const b = 150 + Math.floor(Math.random() * 100);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+// ===============================
+// Arreglo de fichas y contador
+// ===============================
+const chips = [];
+const NUM_CHIPS = 12;
+
+let eliminadas = 0;
+const contadorSpan = document.getElementById("contador");
+
+function crearChips() {
+  for (let i = 0; i < NUM_CHIPS; i++) {
+    const radius = 25 + Math.random() * 20;
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height;
+    const colorCentro = randomPastel();
+    const colorBorde = randomColor();
+    const speedY = 1 + Math.random() * 4; // velocidades diferentes
+    chips.push(new Chip(x, y, radius, colorCentro, colorBorde, speedY));
   }
 }
 
 // ===============================
-// Detección de colisiones (v3.0)
+// Manejo de clics del mouse
 // ===============================
-function handleCollisions() {
-  // Primero, devolver todos a su color original (por si ya no chocan)
-  circles.forEach(c => {
-    c.color = c.originalColor;
-  });
+canvas.addEventListener("click", (event) => {
+  const rect = canvas.getBoundingClientRect();
+  const mouseX = event.clientX - rect.left;
+  const mouseY = event.clientY - rect.top;
 
-  for (let i = 0; i < circles.length; i++) {
-    for (let j = i + 1; j < circles.length; j++) {
-      const c1 = circles[i];
-      const c2 = circles[j];
+  // Revisar si se clickeó alguna ficha
+  for (const chip of chips) {
+    if (chip.isHit(mouseX, mouseY)) {
+      eliminadas++;
+      contadorSpan.textContent = eliminadas;
 
-      const dx = c2.posX - c1.posX;
-      const dy = c2.posY - c1.posY;
-      const distance = Math.hypot(dx, dy); // √(dx² + dy²)
-
-      // Colisión: distancia menor o igual a la suma de los radios
-      if (distance <= c1.radius + c2.radius) {
-        // ====== Color azul mientras haya colisión (B) ======
-        c1.color = "#0000FF";
-        c2.color = "#0000FF";
-
-        // ====== Rebote (C) ======
-        // Cuánto se traslapan
-        const overlap = c1.radius + c2.radius - distance;
-
-        // Ángulo de la línea que une los centros
-        const angle = Math.atan2(dy, dx);
-
-        // Separar ligeramente los círculos para que no se queden pegados
-        const sepX = Math.cos(angle) * overlap / 2;
-        const sepY = Math.sin(angle) * overlap / 2;
-
-        c1.posX -= sepX;
-        c1.posY -= sepY;
-        c2.posX += sepX;
-        c2.posY += sepY;
-
-        // Invertir dirección de ambos (rebote simple)
-        c1.dx = -c1.dx;
-        c1.dy = -c1.dy;
-        c2.dx = -c2.dx;
-        c2.dy = -c2.dy;
-      }
+      // "Eliminar" la ficha: la reaparecemos arriba con nuevos valores
+      chip.respawnTop();
+      break; // solo una ficha por clic
     }
   }
-}
+});
 
 // ===============================
-// Animación principal
+// Bucle de animación
 // ===============================
 function animate() {
-  ctx.clearRect(0, 0, window_width, window_height);
+  // Limpiamos el canvas
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Actualizar posiciones
-  circles.forEach(c => c.update());
-
-  // Detectar colisiones (color + rebote)
-  handleCollisions();
-
-  // Dibujar
-  circles.forEach(c => c.draw(ctx));
+  // Actualizamos y dibujamos cada ficha
+  chips.forEach((chip) => {
+    chip.update();
+    chip.draw(ctx);
+  });
 
   requestAnimationFrame(animate);
 }
 
-generateCircles(15);
+// Inicializar
+crearChips();
 animate();
+
